@@ -28,7 +28,29 @@ module.exports = function(context) {
     spawn(context, 'Sharpshooter');
     spawn(context, 'Brawler');
 
-    for(let cowboy of context.player.cowboys.filter(i => !i.isDead)) {
+    var cowboys = context.player.cowboys
+        .filter(i => !i.isDead)
+        .sort((prev, curr) => {
+            var prevJob = prev.job.toLowerCase();
+            var currJob = curr.job.toLowerCase();
+
+            if (prevJob === currJob) {
+                return 0;
+            } else if (prevJob === 'brawler') {
+                return -1;
+            } else if (prevJob === 'bartender' && currJob === 'sharpshooter') {
+                return -1
+            } else {
+                return 1;
+            }
+        });
+
+    var brawlers = cowboys.filter(i => i.job.toLowerCase() === 'brawler');
+    if (brawlers.length === 2) {
+        cowboys = [brawlers[0]].concat(cowboys.filter(i => i.job.toLowerCase() !== 'brawler')).concat(brawlers[1]);
+    }
+
+    for(let cowboy of cowboys) {
        actBartender(context, cowboy);
        actMarksman(context, cowboy);
        moveCowboy(context, cowboy);
@@ -48,7 +70,7 @@ function log(message) {
 
 function spawn(context, type) {
     var cowboy = context.player.youngGun.callInTile.cowboy;
-    if (!cowboy || cowboy.owner.id !== context.player.id) {
+    if ((!cowboy || cowboy.owner.id !== context.player.id) && context.player.cowboys.filter(i => i.job === type).length < 2) {
         context.player.youngGun.callIn(type);
     }
 }
@@ -73,9 +95,11 @@ function moveCowboy(context, cowboy) {
     cowboy.target = target && !target.isDestroyed ? cowboy.target : null;
     if (target && !target.isDestroyed) {
         const path = context.findPath(cowboy.tile, target.tile);
-        path && path.length && cowboy.move(path[0])
+        path && path.length && cowboy.move(path[0]) && log('moving cowboy 1')
     } else {
-        const pianoPath = getClosestPianoPath(context, cowboy);
+        var pianoPath = getClosestPianoPath(context, cowboy);
+
+
         if (pianoPath && pianoPath.path && pianoPath.path.length) {
             log('moving cowboy');
             cowboy.move(pianoPath.path[0]);
@@ -91,6 +115,7 @@ function moveCowboy(context, cowboy) {
         if (!pianoPath) {
             var newPath = getClosestPianoPath(context, cowboy, false, true);
             if (newPath && newPath.path && newPath.path.length) {
+                log('moving cowboy to new path')
                 cowboy.move(newPath.path[0]);
                 cowboy.target = newPath.piano.id;
             }
@@ -155,9 +180,25 @@ function avoidBottles(context, cowboy) {
 
 function actMarksman(context, cowboy) {
     if (!cowboy.isDead && cowboy.job.toLowerCase() === 'sharpshooter') {
-        const tiles = cowboy.tile.getNeighbors().filter(i => i.cowboy && i.cowboy.owner.id !== context.game.currentPlayer.id);
-        if (tiles.length && cowboy.focus > 0) {
-            cowboy.act(tiles[0]);
+        var tiles = [];
+        for(var i = 1; i <= cowboy.focus; i++) {
+            tiles.push(context.game.getTileAt(cowboy.tile.x + i, cowboy.tile.y))
+            tiles.push(context.game.getTileAt(cowboy.tile.x - i, cowboy.tile.y))
+            tiles.push(context.game.getTileAt(cowboy.tile.x, cowboy.tile.y + i))
+            tiles.push(context.game.getTileAt(cowboy.tile.x, cowboy.tile.y - i))
+        }
+
+        var enemyTile = tiles.find(i => i && i.cowboy && i.cowboy.owner.id !== context.game.currentPlayer.id);
+        if (enemyTile) {
+            var shootinTile;
+            if (enemyTile.x === cowboy.tile.x) {
+                shootinTile = enemyTile.y > cowboy.tile.y ? cowboy.tile.tileSouth : cowboy.tile.tileNorth;
+            } else {
+                shootinTile = enemyTile.x > cowboy.tile.x ? cowboy.tile.tileEast : cowboy.tile.tileWest;
+            }
+
+            log('HHEEEYYOOOO >> >> >> >> WE SHOT THE SHERIFF')
+            cowboy.act(shootinTile);
         }
     }
 }

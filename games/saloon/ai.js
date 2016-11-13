@@ -87,7 +87,7 @@ var AI = Class(BaseAI, {
      * @param {Tile} goal - the goal Tile
      * @returns {Array.<Tile>} An array of Tiles representing the path, the the first element being a valid adjacent Tile to the start, and the last element being the goal.
      */
-    findPath: function(start, goal) {
+    findPath: function(start, goal, avoidCowboys) {
         if(start == goal) {
             // no need to make a path to here...
             return [];
