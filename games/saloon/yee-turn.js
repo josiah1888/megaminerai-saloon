@@ -24,112 +24,19 @@ module.exports = function(context) {
         }
     }
 
-
-
-    //--- 1. Try to spawn a Cowboy --\\
-
-    log('spawning my brawler')
-
     spawn(context, 'Brawler');
     spawn(context, 'Sharpshooter');
     spawn(context, 'Bartender');
 
-
-    /*
-    // Randomly select a job.
-    var callInJob = context.game.jobs.randomElement();
-    var jobCount = 0;
-    for(i = 0; i < context.player.cowboys.length; i++) {
-        var myCowboy = context.player.cowboys[i];
-        if(!myCowboy.isDead && myCowboy.job === callInJob) {
-            jobCount++;
-        }
-    }
-
-    // Call in the new cowboy with that job if there aren't too many
-    //   cowboys with that job already.
-    if(context.player.youngGun.canCallIn && jobCount < context.game.maxCowboysPerJob) {
-        log("1. Calling in: " + callInJob);
-        context.player.youngGun.callIn(callInJob);
-    }
-    */
-
     for(let cowboy of context.player.cowboys.filter(i => !i.isDead)) {
-        const target = cowboy.target && getFurnishing(context, cowboy.target);
-        cowboy.target = target && !target.isDestroyed ? cowboy.target : null;
-        if (target && !target.isDestroyed) {
-            const path = context.findPath(cowboy.tile, target.tile);
-            path && path.length && cowboy.move(path[0])
-        } else {
-            const pianoPath = getClosestPianoPath(context, cowboy);
-            if (pianoPath && pianoPath.path && pianoPath.path.length) {
-                log('moving cowboy');
-                cowboy.move(pianoPath.path[0]);
-            }
-
-            if (pianoPath) {
-                pianoPath.piano.targetedBy = cowboy.id;
-                cowboy.target = pianoPath.piano.id;
-
-                log('setting id of ' + cowboy.target)
-            }
-        }
+       moveCowboy(context, cowboy);
+       playPiano(context, cowboy);
+       actBartender(context, cowboy);
     }
 
     // Now let's use him
     if(activeCowboy) {
-        //--- 2. Try to move to a Piano ---\\
-
-        // find a piano
-        /*
-        var piano;
-        for(i = 0; i < context.game.furnishings.length; i++) {
-            var furnishing = context.game.furnishings[i];
-            if(furnishing.isPiano && !furnishing.isDestroyed) {
-                piano = furnishing;
-                break;
-            }
-        }
-        
-
-        // There will always be pianos or the game will end. No need to check for existence.
-        // Attempt to move toward the piano by finding a path.
-        if(activeCowboy.canMove && !activeCowboy.isDead) {
-            log("Trying to do stuff with Cowboy #" + activeCowboy.id);
-
-            // find a path from the Tile context cowboy is on to the tile the piano is on
-            var path = context.findPath(activeCowboy.tile, piano.tile);
-
-            // if there is a path, move to it
-            //      length 0 means no path could be found to the tile
-            //      length 1 means the piano is adjacent, and we can't move onto the same tile as the piano
-            if(path.length > 1) {
-                log("2. Moving to Tile #" + path[0].id);
-                activeCowboy.move(path[0]);
-            }
-        }
-        */
-
-
-
         //--- 3. Try to play a piano ---\\\
-
-        // make sure the cowboy is alive and is not busy
-        if(!activeCowboy.isDead && activeCowboy.turnsBusy === 0) {
-            // look at all the neighboring (adjacent) tiles, and if they have a piano, play it
-            var neighbors = activeCowboy.tile.getNeighbors();
-            for(i = 0; i < neighbors.length; i++) {
-                var neighbor = neighbors[i];
-
-                // if the neighboring tile has a piano
-                if(neighbor.furnishing && neighbor.furnishing.isPiano) {
-                    // then play it
-                    log("3. Playing Furnishing (piano) #" + neighbor.furnishing.id);
-                    activeCowboy.play(neighbor.furnishing);
-                    break;
-                }
-            }
-        }
 
 
 
@@ -193,4 +100,56 @@ function getClosestPianoPath(context, cowboy) {
 
 function getFurnishing(context, id) {
     return context.game.furnishings.find(i => i.id === id);
+}
+
+function moveCowboy(context, cowboy) {
+    const target = cowboy.target && getFurnishing(context, cowboy.target);
+    cowboy.target = target && !target.isDestroyed ? cowboy.target : null;
+    if (target && !target.isDestroyed) {
+        const path = context.findPath(cowboy.tile, target.tile);
+        path && path.length && cowboy.move(path[0])
+    } else {
+        const pianoPath = getClosestPianoPath(context, cowboy);
+        if (pianoPath && pianoPath.path && pianoPath.path.length) {
+            log('moving cowboy');
+            cowboy.move(pianoPath.path[0]);
+        }
+
+        if (pianoPath) {
+            pianoPath.piano.targetedBy = cowboy.id;
+            cowboy.target = pianoPath.piano.id;
+
+            log('setting id of ' + cowboy.target)
+        }
+    }
+}
+
+function actBartender(context, bartender) {
+    if (bartender.job === 'Bartender') {
+        const neighbors = bartender.tile.getNeighbors()
+            .map(i => i.bartender).filter(i => i)
+            .filter(i => i.owner && i.owner.name !== context.getName());
+
+        if (neighbors.length) {
+            bartender.act(neighbors[0], 'North');
+        }
+   }
+}
+
+function playPiano(context, cowboy) {
+     if(!cowboy.isDead && cowboy.turnsBusy === 0) {
+    // look at all the neighboring (adjacent) tiles, and if they have a piano, play it
+        var neighbors = cowboy.tile.getNeighbors();
+        for(i = 0; i < neighbors.length; i++) {
+            var neighbor = neighbors[i];
+
+        // if the neighboring tile has a piano
+            if(neighbor.furnishing && neighbor.furnishing.isPiano) {
+                // then play it
+                log("3. Playing Furnishing (piano) #" + neighbor.furnishing.id);
+                cowboy.play(neighbor.furnishing);
+                return;
+            } 
+        }
+    }
 }
