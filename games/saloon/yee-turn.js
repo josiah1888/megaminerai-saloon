@@ -30,41 +30,10 @@ module.exports = function(context) {
 
     for(let cowboy of context.player.cowboys.filter(i => !i.isDead)) {
        actBartender(context, cowboy);
+       actMarksman(context, cowboy);
        moveCowboy(context, cowboy);
        avoidBottles(context, cowboy);
        playPiano(context, cowboy);
-    }
-
-    // Now let's use him
-    if(activeCowboy) {
-        //--- 3. Try to play a piano ---\\\
-
-
-
-        //--- 4. Try to act ---\\
-
-        // make sure the cowboy is alive and is not busy
-        if(!activeCowboy.isDead) {
-            // Get a random neighboring tile.
-            var randomNeighbor = activeCowboy.tile.getNeighbors().randomElement();
-
-            // Based on job, act accordingly.
-            switch(activeCowboy.job) {
-               
-                case "Sharpshooter":
-                    // Sharpshooters build focus by standing still, they can then act(tile) on a neighboring tile to fire in that direction
-                    if(activeCowboy.focus > 0) {
-                        log("4. Sharpshooter acting on Tile #" + randomNeighbor.id);
-                        activeCowboy.act(randomNeighbor); // fire in a random direction
-                    }
-                    else {
-                        log("4. Sharpshooter doesn't have enough focus. (focus == " + activeCowboy.focus + ")");
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
     }
 
     log("Ending my turn.");
@@ -78,7 +47,10 @@ function log(message) {
 }
 
 function spawn(context, type) {
-    context.player.youngGun.callIn(type);
+    var cowboy = context.player.youngGun.callInTile.cowboy;
+    if (!cowboy || cowboy.owner.id !== context.player.id) {
+        context.player.youngGun.callIn(type);
+    }
 }
 
 function getClosestPianoPath(context, cowboy, checkTargeted, goBackwards) {
@@ -179,4 +151,13 @@ function avoidBottles(context, cowboy) {
         }
 
      }
+}
+
+function actMarksman(context, cowboy) {
+    if (!cowboy.isDead && cowboy.job.toLowerCase() === 'sharpshooter') {
+        const tiles = cowboy.tile.getNeighbors().filter(i => i.cowboy && i.cowboy.owner.id !== context.game.currentPlayer.id);
+        if (tiles.length && cowboy.focus > 0) {
+            cowboy.act(tiles[0]);
+        }
+    }
 }
