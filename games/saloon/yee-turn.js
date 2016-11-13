@@ -44,7 +44,7 @@ module.exports = function(context) {
         //--- 4. Try to act ---\\
 
         // make sure the cowboy is alive and is not busy
-        if(!activeCowboy.isDead && activeCowboy.turnsBusy === 0) {
+        if(!activeCowboy.isDead) {
             // Get a random neighboring tile.
             var randomNeighbor = activeCowboy.tile.getNeighbors().randomElement();
 
@@ -132,7 +132,7 @@ function getRandDir(){
     
 }
 function actBartender(context, bartender) {
-    if (bartender.job === 'Bartender') {
+    if (bartender.job === 'Bartender' && bartender.turnsBusy === 0) {
         const neighbors = bartender.tile.getNeighbors()
             .map(i => i.bartender).filter(i => i)
             .filter(i => i.owner && i.owner.name !== context.getName());
@@ -144,8 +144,8 @@ function actBartender(context, bartender) {
             for(var tile of enemyTiles) {
                 var path = context.findPath(bartender.tile, tile)
                 if (path.length === 2){
-                    bartender.move(path[0])
-                    bartender.act(path[1], getRandDir())
+                    bartender.move(path[0]);
+                    bartender.act(path[1], getRandDir());
                 }
             }
         }
@@ -153,7 +153,7 @@ function actBartender(context, bartender) {
 }
 
 function playPiano(context, cowboy) {
-     if(!cowboy.isDead && cowboy.turnsBusy === 0) {
+     if(!cowboy.isDead) {
     // look at all the neighboring (adjacent) tiles, and if they have a piano, play it
         var neighbors = cowboy.tile.getNeighbors();
         for(i = 0; i < neighbors.length; i++) {
@@ -171,7 +171,7 @@ function playPiano(context, cowboy) {
 }
 
 function avoidBottles(context, cowboy) {
-     if(!cowboy.isDead && cowboy.turnsBusy === 0) {
+     if(!cowboy.isDead) {
         const bottles = cowboy.tile.getNeighbors().filter(i => i.bottle);
         const freeTiles = cowboy.tile.getNeighbors().filter(i => !i.bottle && !i.cowboy && !i.furnishing && i.isPathable());
         if (bottles.length && freeTiles.length) {
