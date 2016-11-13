@@ -24,15 +24,15 @@ module.exports = function(context) {
         }
     }
 
-    spawn(context, 'Brawler');
-    spawn(context, 'Sharpshooter');
     spawn(context, 'Bartender');
+    spawn(context, 'Sharpshooter');
+    spawn(context, 'Brawler');
 
     for(let cowboy of context.player.cowboys.filter(i => !i.isDead)) {
+       actBartender(context, cowboy);
        moveCowboy(context, cowboy);
        avoidBottles(context, cowboy);
        playPiano(context, cowboy);
-       actBartender(context, cowboy);
     }
 
     // Now let's use him
@@ -50,17 +50,7 @@ module.exports = function(context) {
 
             // Based on job, act accordingly.
             switch(activeCowboy.job) {
-                case "Bartender":
-                    // Bartenders throw Bottles in a direction, and the Bottle makes cowboys drunk which causes them to walk in random directions
-                    // so throw the bottle on a random neighboring tile, and make drunks move in a random direction
-                    var direction = activeCowboy.tile.directions.randomElement();
-                    log("4. Bartender acting on Tile #" + randomNeighbor.id + " with drunkDirection " + direction);
-                    activeCowboy.act(randomNeighbor, direction);
-                    break;
-                case "Brawler":
-                    // Brawlers cannot act, they instead automatically attack all neighboring tiles on the end of their owner's turn.
-                    log("4. Brawlers cannot act.");
-                    break;
+               
                 case "Sharpshooter":
                     // Sharpshooters build focus by standing still, they can then act(tile) on a neighboring tile to fire in that direction
                     if(activeCowboy.focus > 0) {
@@ -70,6 +60,8 @@ module.exports = function(context) {
                     else {
                         log("4. Sharpshooter doesn't have enough focus. (focus == " + activeCowboy.focus + ")");
                     }
+                    break;
+                default:
                     break;
             }
         }
@@ -89,12 +81,13 @@ function spawn(context, type) {
     context.player.youngGun.callIn(type);
 }
 
-function getClosestPianoPath(context, cowboy) {
-    const pianos = context.game.furnishings.filter(i => i.isPiano && !i.isDestroyed && !i.targetedBy);
+function getClosestPianoPath(context, cowboy, checkTargeted, goBackwards) {
+    checkTargeted = checkTargeted === false ? false : true;
+    const pianos = context.game.furnishings.filter(i => i.isPiano && !i.isDestroyed && (!checkTargeted || !i.targetedBy));
     const paths = pianos.map(i => ({piano: i, path: context.findPath(cowboy.tile, i.tile)}));
-    const smallestLength = Math.min.apply(null, paths.map(i => i.path.length));
+    const lengthzzzzz = Math[goBackwards ? 'max' : 'min'].apply(null, paths.map(i => i.path.length));
     //log(paths)
-    const path = paths.find(i => i.path.length === smallestLength);
+    const path = paths.find(i => i.path.length === lengthzzzzz);
 
     return path;
 }
@@ -122,9 +115,22 @@ function moveCowboy(context, cowboy) {
 
             log('setting id of ' + cowboy.target)
         }
+
+        if (!pianoPath) {
+            var newPath = getClosestPianoPath(context, cowboy, false, true);
+            if (newPath && newPath.path && newPath.path.length) {
+                cowboy.move(newPath.path[0]);
+                cowboy.target = newPath.piano.id;
+            }
+        }
     }
 }
-
+function getRandDir(){
+    var dirs = ['North', 'South', 'East', 'West'];
+    var num = Math.floor(Math.random() * 4)
+    return dirs[num];
+    
+}
 function actBartender(context, bartender) {
     if (bartender.job === 'Bartender') {
         const neighbors = bartender.tile.getNeighbors()
@@ -132,7 +138,16 @@ function actBartender(context, bartender) {
             .filter(i => i.owner && i.owner.name !== context.getName());
 
         if (neighbors.length) {
-            bartender.act(neighbors[0], 'North');
+            bartender.act(neighbors[0], getRandDir);
+        } else {
+            var enemyTiles = context.game.currentPlayer.opponent.cowboys.map(i => i.tile);
+            for(var tile of enemyTiles) {
+                var path = context.findPath(bartender.tile, tile)
+                if (path.length === 2){
+                    bartender.move(path[0])
+                    bartender.act(path[1], getRandDir())
+                }
+            }
         }
    }
 }
