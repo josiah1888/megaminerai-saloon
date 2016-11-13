@@ -30,6 +30,7 @@ module.exports = function(context) {
 
     for(let cowboy of context.player.cowboys.filter(i => !i.isDead)) {
        moveCowboy(context, cowboy);
+       avoidBottles(context, cowboy);
        playPiano(context, cowboy);
        actBartender(context, cowboy);
     }
@@ -152,4 +153,15 @@ function playPiano(context, cowboy) {
             } 
         }
     }
+}
+
+function avoidBottles(context, cowboy) {
+     if(!cowboy.isDead && cowboy.turnsBusy === 0) {
+        const bottles = cowboy.tile.getNeighbors().filter(i => i.bottle);
+        const freeTiles = cowboy.tile.getNeighbors().filter(i => !i.bottle && !i.cowboy && !i.furnishing && i.isPathable());
+        if (bottles.length && freeTiles.length) {
+            cowboy.move(freeTiles[0])
+        }
+
+     }
 }
